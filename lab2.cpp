@@ -30,6 +30,9 @@ public:
 	float dir;
 	float pos[2];
 	int xres, yres;
+	int bCount;
+	float lbTime;
+	float bFreq;
 	Global();
 } g;
 
@@ -54,8 +57,8 @@ public:
 //Function prototypes
 void init_opengl(void);
 void physics(void);
+void updatePos(void);
 void render(void);
-
 
 int main()
 {
@@ -72,6 +75,7 @@ int main()
 		}
 		physics();
 		render();
+		updatePos();
 		x11.swapBuffers();
 		usleep(200);
 	}
@@ -86,6 +90,9 @@ Global::Global()
 	dir = 30.0f;
 	pos[0] = {0.0f+w};
 	pos[1] = {g.yres/2.0f};
+	bCount = 0;
+	lbTime = 0.0;
+	bFreq = 0.0;
 }
 
 X11_wrapper::~X11_wrapper()
@@ -254,16 +261,26 @@ void physics()
 	if (g.pos[0] >= (g.xres-g.w)) {
 		g.pos[0] = (g.xres-g.w);
 		g.dir = -g.dir;
-		glColor3ub(100, 120, 220);
-		//sleep(1);
 	}
 	if (g.pos[0] <= g.w) {
 		g.pos[0] = g.w;
 		g.dir = -g.dir;
-		glColor3ub(255, 120, 220);
-		//sleep(1);
 	}
 
+}
+
+void updatePos()
+{
+	float cTime = (float)clock() / CLOCKS_PER_SEC;
+	if (g.pos[0] <= 0 || g.pos[0] >= g.xres) 
+	{
+		g.dir = -g.dir;
+		g.bCount++;
+		float tDiff = cTime - g.lbTime;		// since last bounce
+		g.bFreq = 10.0 / tDiff;
+		g.lbTime = cTime;
+	}
+	g.pos[0] += g.dir;
 }
 
 void render()
@@ -272,7 +289,10 @@ void render()
 	//clear the window
 	glClear(GL_COLOR_BUFFER_BIT);
 	//draw the box
+	float red = min(g.bFreq / 10.0, 10.0);
+	float blue = 125.0 - red;
 	glPushMatrix();
+	glColor3ub(red, 120, blue);
 	//glColor3ub(100, 120, 220);
 	glTranslatef(g.pos[0], g.pos[1], 0.0f);
 	glBegin(GL_QUADS);
