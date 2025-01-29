@@ -21,6 +21,8 @@ using namespace std;
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <GL/glx.h>
+#include <sys/time.h>
+#include <algorithm>
 
 //some structures
 
@@ -28,11 +30,11 @@ class Global {
 public:
 	float w;
 	float dir;
+	float dir_y;
 	float pos[2];
 	int xres, yres;
-	int bCount;
-	float lbTime;
-	float bFreq;
+	struct timeval bounce_freq;
+    float bounce_itval;
 	Global();
 } g;
 
@@ -57,8 +59,8 @@ public:
 //Function prototypes
 void init_opengl(void);
 void physics(void);
-void updatePos(void);
 void render(void);
+
 
 int main()
 {
@@ -75,7 +77,6 @@ int main()
 		}
 		physics();
 		render();
-		updatePos();
 		x11.swapBuffers();
 		usleep(200);
 	}
@@ -88,11 +89,11 @@ Global::Global()
 	yres = 200;
 	w = 20.0f;
 	dir = 30.0f;
+	dir_y = 15.0f;
 	pos[0] = {0.0f+w};
 	pos[1] = {g.yres/2.0f};
-	bCount = 0;
-	lbTime = 0.0;
-	bFreq = 0.0;
+	gettimeofday(&bounce_freq, NULL);
+    bounce_itval = 0.0f;
 }
 
 X11_wrapper::~X11_wrapper()
@@ -115,7 +116,7 @@ X11_wrapper::X11_wrapper()
 	if (vi == NULL) {
 		cout << "\n\tno appropriate visual found\n" << endl;
 		exit(EXIT_FAILURE);
-	} 
+	}
 	Colormap cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
 	XSetWindowAttributes swa;
 	swa.colormap = cmap;
@@ -235,6 +236,14 @@ int X11_wrapper::check_keys(XEvent *e)
 			case XK_Escape:
 				//Escape key was pressed
 				return 1;
+			case XK_Up:
+                g.dir *= 1.2f;
+                g.dir_y *= 1.2f;
+                break;
+            case XK_Down:
+                g.dir *= 0.8f;
+                g.dir_y *= 0.8f;
+                break;
 		}
 	}
 	return 0;
@@ -255,46 +264,68 @@ void init_opengl(void)
 
 void physics()
 {
-	// Move the box
+	// Horizontal
 	g.pos[0] += g.dir;
 
+	// L+R
 	if (g.pos[0] >= (g.xres-g.w)) {
 		g.pos[0] = (g.xres-g.w);
 		g.dir = -g.dir;
+
+		struct timeval current_time;
+        gettimeofday(&current_time, NULL);
+        g.bounce_itval = (current_time.tv_sec - g.bounce_freq.tv_sec) +
+                            (current_time.tv_usec - g.bounce_freq.tv_usec) / 1000000.0f;
+        g.bounce_freq = current_time;
 	}
 	if (g.pos[0] <= g.w) {
 		g.pos[0] = g.w;
 		g.dir = -g.dir;
+
+		struct timeval current_time;
+        gettimeofday(&current_time, NULL);
+        g.bounce_itval = (current_time.tv_sec - g.bounce_freq.tv_sec) +
+                            (current_time.tv_usec - g.bounce_freq.tv_usec) / 1000000.0f;
+        g.bounce_freq = current_time;
 	}
 
-}
+	// Vertical
+	g.pos[1] += g.dir_y;
 
-void updatePos()
-{
-	float cTime = (float)clock() / CLOCKS_PER_SEC;
-	if (g.pos[0] <= 0 || g.pos[0] >= g.xres) 
-	{
-		g.dir = -g.dir;
-		g.bCount++;
-		float tDiff = cTime - g.lbTime;		// since last bounce
-		g.bFreq = 10.0 / tDiff;
-		g.lbTime = cTime;
-	}
-	g.pos[0] += g.dir;
+	// T+B
+	if (g.pos[1] + g.w >= g.yres) {
+        g.pos[1] = g.yres - g.w;
+        g.dir_y = -g.dir_y;
+    }
+    if (g.pos[1] - g.w <= 0) {
+        g.pos[1] = g.w;
+        g.dir_y = -g.dir_y;
+    }
 }
 
 void render()
 {
-	
 	//clear the window
 	glClear(GL_COLOR_BUFFER_BIT);
+	if (2 * g.w >= g.xres)
+        return;
+
+	int red = 220;
+	int blue = 220;
+	if (g.bounce_itval > 0.0f) {
+        float rate = 1.0f / g.bounce_itval;
+        float min_rate = 0.1f;
+        float max_rate = 10.0f;
+        rate = (rate - min_rate) / (max_rate - min_rate);
+        rate = std::max(0.0f, std::min(1.0f, rate));
+        red = static_cast<int>(rate * 255);
+        blue = static_cast<int>((1.0f - rate) * 255);
+    }
+
 	//draw the box
-	float red = min(g.bFreq / 10.0, 10.0);
-	float blue = 125.0 - red;
 	glPushMatrix();
-	glColor3ub(red, 120, blue);
-	//glColor3ub(100, 120, 220);
 	glTranslatef(g.pos[0], g.pos[1], 0.0f);
+	glColor3ub(red, 120, blue);
 	glBegin(GL_QUADS);
 		glVertex2f(-g.w, -g.w);
 		glVertex2f(-g.w,  g.w);
@@ -302,6 +333,4 @@ void render()
 		glVertex2f( g.w, -g.w);
 	glEnd();
 	glPopMatrix();
-
 }
-
