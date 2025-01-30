@@ -4,3 +4,6 @@
 
 # Object Files
 *.o
+
+# System Files
+*.DS_Store
