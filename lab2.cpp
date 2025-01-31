@@ -23,6 +23,7 @@ using namespace std;
 #include <GL/glx.h>
 #include <sys/time.h>
 #include <algorithm>
+#include "fonts.h"
 
 //some structures
 
@@ -80,6 +81,7 @@ int main()
 		x11.swapBuffers();
 		usleep(200);
 	}
+	cleanup_fonts();
 	return 0;
 }
 
@@ -136,7 +138,7 @@ void X11_wrapper::set_title()
 {
 	//Set the window title bar.
 	XMapWindow(dpy, win);
-	XStoreName(dpy, win, "3350 Lab-1");
+	XStoreName(dpy, win, "3350 Lab-2");
 }
 
 bool X11_wrapper::getXPending()
@@ -260,6 +262,10 @@ void init_opengl(void)
 	glOrtho(0, g.xres, 0, g.yres, -1, 1);
 	//Set the screen background color
 	glClearColor(0.1, 0.1, 0.1, 1.0);
+
+	//Allow fonts
+	glEnable(GL_TEXTURE_2D);
+	initialize_fonts();
 }
 
 void physics()
@@ -333,4 +339,14 @@ void render()
 		glVertex2f( g.w, -g.w);
 	glEnd();
 	glPopMatrix();
+
+	Rect r;
+	r.bot = g.yres - 20;	// opengl origin is at lower-left
+	r.left = 10;
+	r.center = 0;
+	ggprint8b(&r, 16, 0x00ff0000, "3350 lab-2");
+	ggprint8b(&r, 16, 0x00ffff00, "ESC to exit");
+	ggprint8b(&r, 16, 0x00ffff00, "Arrow up to increase speed");
+	ggprint8b(&r, 16, 0x00ffff00, "Arrow down to decrease speed");
+
 }

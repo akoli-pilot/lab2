@@ -6,8 +6,8 @@
   \ \ \L\ \\ \ \/\ \ \ \L\ \      // /_\ \
    \ \____/ \ \_\ \_\ \____/     /\______/
     \/___/   \/_/\/_/\/___/      \/_____/ 
-                                          
 ```
+
 Box Animation Lab
 
 ![lab2a](https://github.com/user-attachments/assets/59e89cde-2867-462e-b633-113539fda92e)
